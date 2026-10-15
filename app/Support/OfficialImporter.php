@@ -1,0 +1,209 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\Official;
+use App\Models\Part;
+use DateTimeInterface;
+use Illuminate\Support\Str;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Reader\CSV\Reader as CsvReader;
+use OpenSpout\Reader\XLSX\Reader as XlsxReader;
+use OpenSpout\Writer\XLSX\Writer as XlsxWriter;
+
+/** Nhập thẻ tăng ni từ file Excel/CSV, nhận cột theo tên tiêu đề (không phụ thuộc thứ tự cột). */
+class OfficialImporter
+{
+    /** Tiêu đề cột của file mẫu. */
+    public const COLUMNS = [
+        'sothe' => 'Số thẻ',
+        'sochungnhan' => 'Số chứng nhận',
+        'phapdanh' => 'Pháp danh',
+        'ho' => 'Họ và đệm',
+        'ten' => 'Tên',
+        'ngaysinh' => 'Ngày sinh',
+        'noisinh' => 'Nơi sinh',
+        'cccd' => 'Số CCCD',
+        'ngaycapcccd' => 'Ngày cấp CCCD',
+        'thogioi' => 'Thọ giới',
+        'diachi' => 'Nơi tu học',
+        'part' => 'Tỉnh thành',
+        'hephai' => 'Hệ phái',
+        'ngaycap' => 'Ngày cấp',
+        'prior' => 'Ưu tiên',
+    ];
+
+    /** Tên cột khác được chấp nhận (đã chuẩn hóa) => field. */
+    private const ALIASES = [
+        'socn' => 'sochungnhan', 'hovadem' => 'ho', 'noituhoc' => 'diachi', 'thuongtru' => 'diachi',
+        'noituhocthuongtru' => 'diachi', 'gioidan' => 'part', 'tinh' => 'part', 'uutien' => 'prior', 'cccdso' => 'cccd',
+    ];
+
+    private array $parts = [];
+
+    public function __construct(private ?int $defaultPartId = null, private bool $update = false)
+    {
+        foreach (Part::all() as $p) {
+            $this->parts['id:'.$p->id] = $p->id;
+            $this->parts['t:'.self::norm($p->title)] = $p->id;
+            $this->parts['t:'.self::norm($p->alias)] = $p->id;
+        }
+    }
+
+    /** @return array{created:int, updated:int, skipped:int, errors:string[]} */
+    public function import(string $path, string $ext): array
+    {
+        $reader = strtolower($ext) === 'csv' ? new CsvReader : new XlsxReader;
+        $reader->open($path);
+
+        $result = ['created' => 0, 'updated' => 0, 'skipped' => 0, 'errors' => []];
+        $map = null;
+
+        foreach ($reader->getSheetIterator() as $sheet) {
+            $line = 0;
+            foreach ($sheet->getRowIterator() as $row) {
+                $line++;
+                $cells = array_map(fn ($c) => $c->getValue(), $row->getCells());
+
+                if ($map === null) {
+                    $found = $this->headerMap($cells);
+                    $map = in_array('ten', $found, true) ? $found : null; // chưa gặp dòng tiêu đề thì thử dòng sau
+
+                    continue;
+                }
+
+                if (implode('', array_map(fn ($v) => trim((string) $v), $cells)) === '') {
+                    continue;
+                }
+
+                try {
+                    $this->importRow($map, $cells, $result);
+                } catch (\Throwable $e) {
+                    $result['skipped']++;
+                    $result['errors'][] = "Dòng $line: ".$e->getMessage();
+                }
+            }
+            break; // chỉ đọc sheet đầu tiên
+        }
+        $reader->close();
+
+        if ($map === null) {
+            $result['errors'][] = 'Không tìm thấy dòng tiêu đề (cần có cột "Tên"). Hãy tải file mẫu.';
+        }
+
+        return $result;
+    }
+
+    public static function writeTemplate(string $path): void
+    {
+        $w = new XlsxWriter;
+        $w->openToFile($path);
+        $w->addRow(Row::fromValues(array_values(self::COLUMNS)));
+        $w->close();
+    }
+
+    private function headerMap(array $cells): array
+    {
+        $byNorm = self::ALIASES;
+        foreach (self::COLUMNS as $field => $title) {
+            $byNorm[self::norm($title)] = $field;
+            $byNorm[$field] = $field;
+        }
+
+        $map = [];
+        foreach ($cells as $i => $v) {
+            $n = self::norm((string) $v);
+            if (isset($byNorm[$n])) {
+                $map[$i] = $byNorm[$n];
+            }
+        }
+
+        return $map;
+    }
+
+    private function importRow(array $map, array $cells, array &$result): void
+    {
+        $d = [];
+        foreach ($map as $i => $field) {
+            $d[$field] = $cells[$i] ?? null;
+        }
+        $str = fn ($k) => $this->text($d[$k] ?? null);
+
+        if ($str('ten') === '') {
+            throw new \RuntimeException('thiếu Tên');
+        }
+        $partId = $this->resolvePart($str('part'));
+        if (! $partId) {
+            throw new \RuntimeException('không xác định được Tỉnh thành "'.$str('part').'"');
+        }
+        $cap = $this->parseDate($d['ngaycap'] ?? null);
+        if (! $cap) {
+            throw new \RuntimeException('thiếu hoặc sai Ngày cấp (dd/mm/yyyy)');
+        }
+
+        $data = ['part_id' => $partId, 'prior' => (int) $str('prior'),
+            'ngaycap_ngay' => $cap['d'], 'ngaycap_thang' => $cap['m'], 'ngaycap_nam' => $cap['y']];
+        foreach (['sothe', 'sochungnhan', 'phapdanh', 'ho', 'ten', 'ngaysinh', 'noisinh', 'cccd', 'ngaycapcccd', 'thogioi', 'diachi', 'hephai'] as $k) {
+            $data[$k] = $str($k);
+        }
+
+        $existing = ($this->update && $data['sothe'] !== '') ? Official::where('sothe', $data['sothe'])->first() : null;
+
+        if ($existing) {
+            // Không ghi đè bằng ô trống.
+            $existing->update(array_filter($data, fn ($v) => $v !== '' && $v !== null));
+            $result['updated']++;
+        } else {
+            Official::create($data + ['status' => 1]);
+            $result['created']++;
+        }
+    }
+
+    private function resolvePart(string $value): ?int
+    {
+        if ($value === '') {
+            return $this->defaultPartId;
+        }
+        if (ctype_digit($value) && isset($this->parts['id:'.$value])) {
+            return (int) $value;
+        }
+
+        return $this->parts['t:'.self::norm($value)] ?? $this->defaultPartId;
+    }
+
+    /** Ô ngày của Excel được đọc thành DateTime, quy về dd/mm/yyyy như dữ liệu cũ. */
+    private function text(mixed $v): string
+    {
+        if ($v instanceof DateTimeInterface) {
+            return $v->format('d/m/Y');
+        }
+        if (is_float($v) && floor($v) == $v) {
+            $v = (int) $v;
+        }
+
+        return trim((string) $v);
+    }
+
+    /** @return array{d:int,m:int,y:int}|null */
+    private function parseDate(mixed $v): ?array
+    {
+        if ($v instanceof DateTimeInterface) {
+            return ['d' => (int) $v->format('j'), 'm' => (int) $v->format('n'), 'y' => (int) $v->format('Y')];
+        }
+        $s = $this->text($v);
+        if (preg_match('#^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$#', $s, $m)) {
+            return ['d' => (int) $m[1], 'm' => (int) $m[2], 'y' => (int) $m[3]];
+        }
+        if (preg_match('#^(\d{4})-(\d{1,2})-(\d{1,2})#', $s, $m)) {
+            return ['d' => (int) $m[3], 'm' => (int) $m[2], 'y' => (int) $m[1]];
+        }
+
+        return null;
+    }
+
+    /** Chuẩn hóa tiêu đề/tên: bỏ dấu, chữ thường, chỉ giữ chữ-số. */
+    private static function norm(string $s): string
+    {
+        return preg_replace('/[^a-z0-9]/', '', strtolower(Str::ascii($s)));
+    }
+}
