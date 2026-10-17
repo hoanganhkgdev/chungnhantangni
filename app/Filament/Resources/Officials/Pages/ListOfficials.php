@@ -33,7 +33,7 @@ class ListOfficials extends ListRecords
                 }),
             Action::make('import')->label('Import Excel')->visible(fn () => auth()->user()->canEdit())->icon('heroicon-o-arrow-up-tray')->color('success')
                 ->modalHeading('Import thẻ tăng ni từ Excel')
-                ->modalDescription('Cột được nhận theo tên tiêu đề, không phụ thuộc thứ tự. Bắt buộc có "Tên", "Ngày cấp" (dd/mm/yyyy) và "Tỉnh thành". Dùng "Tải file mẫu" để lấy đúng tiêu đề.')
+                ->modalDescription('Cột được nhận theo tên tiêu đề, không phụ thuộc thứ tự. Bắt buộc có "Họ và tên", "Ngày cấp" (dd/mm/yyyy) và "Tỉnh thành". Dùng "Tải file mẫu" để lấy đúng tiêu đề.')
                 ->modalSubmitActionLabel('Import')
                 ->schema([
                     FileUpload::make('file')->label('File .xlsx hoặc .csv')->required()

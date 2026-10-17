@@ -17,8 +17,7 @@ class OfficialImporter
     /** Tiêu đề cột của file mẫu. */
     public const COLUMNS = [
         'phapdanh' => 'Pháp danh',
-        'ho' => 'Họ và đệm',
-        'ten' => 'Tên',
+        'hovaten' => 'Họ và tên',
         'ngaysinh' => 'Ngày sinh',
         'noisinh' => 'Nơi sinh',
         'cccd' => 'Số CCCD',
@@ -33,7 +32,7 @@ class OfficialImporter
 
     /** Tên cột khác được chấp nhận (đã chuẩn hóa) => field. */
     private const ALIASES = [
-        'hovadem' => 'ho', 'noituhoc' => 'diachi', 'thuongtru' => 'diachi',
+        'hoten' => 'hovaten', 'noituhoc' => 'diachi', 'thuongtru' => 'diachi',
         'noituhocthuongtru' => 'diachi', 'gioidan' => 'part', 'tinh' => 'part', 'uutien' => 'prior', 'cccdso' => 'cccd',
     ];
 
@@ -65,7 +64,7 @@ class OfficialImporter
 
                 if ($map === null) {
                     $found = $this->headerMap($cells);
-                    $map = in_array('ten', $found, true) ? $found : null; // chưa gặp dòng tiêu đề thì thử dòng sau
+                    $map = (in_array('hovaten', $found, true) || in_array('ten', $found, true)) ? $found : null; // chưa gặp dòng tiêu đề thì thử dòng sau
 
                     continue;
                 }
@@ -86,7 +85,7 @@ class OfficialImporter
         $reader->close();
 
         if ($map === null) {
-            $result['errors'][] = 'Không tìm thấy dòng tiêu đề (cần có cột "Tên"). Hãy tải file mẫu.';
+            $result['errors'][] = 'Không tìm thấy dòng tiêu đề (cần có cột "Họ và tên"). Hãy tải file mẫu.';
         }
 
         return $result;
@@ -127,8 +126,16 @@ class OfficialImporter
         }
         $str = fn ($k) => $this->text($d[$k] ?? null);
 
-        if ($str('ten') === '') {
-            throw new \RuntimeException('thiếu Tên');
+        // Họ và tên gộp một cột: chữ cuối là Tên, phần còn lại là Họ và đệm.
+        $ho = $str('ho');
+        $ten = $str('ten');
+        if ($str('hovaten') !== '') {
+            $parts = preg_split('/\s+/u', $str('hovaten'));
+            $ten = array_pop($parts);
+            $ho = implode(' ', $parts);
+        }
+        if ($ten === '') {
+            throw new \RuntimeException('thiếu Họ và tên');
         }
         $partId = $this->resolvePart($str('part'));
         if (! $partId) {
@@ -141,9 +148,12 @@ class OfficialImporter
 
         $data = ['part_id' => $partId, 'prior' => (int) $str('prior'),
             'ngaycap_ngay' => $cap['d'], 'ngaycap_thang' => $cap['m'], 'ngaycap_nam' => $cap['y']];
-        foreach (['phapdanh', 'ho', 'ten', 'ngaysinh', 'noisinh', 'cccd', 'ngaycapcccd', 'thogioi', 'diachi', 'hephai'] as $k) {
+        foreach (['phapdanh', 'ngaysinh', 'noisinh', 'cccd', 'ngaycapcccd', 'thogioi', 'diachi', 'hephai'] as $k) {
             $data[$k] = $str($k);
         }
+
+        $data['ho'] = $ho;
+        $data['ten'] = $ten;
 
         // Số thẻ tự sinh: 7 số đầu CCCD + 5 số ngẫu nhiên.
         $data['sothe'] = $this->generateSothe($data['cccd']);
