@@ -27,13 +27,12 @@ class OfficialImporter
         'part' => 'Tỉnh thành',
         'hephai' => 'Hệ phái',
         'ngaycap' => 'Ngày cấp',
-        'prior' => 'Ưu tiên',
     ];
 
     /** Tên cột khác được chấp nhận (đã chuẩn hóa) => field. */
     private const ALIASES = [
         'hoten' => 'hovaten', 'noituhoc' => 'diachi', 'thuongtru' => 'diachi',
-        'noituhocthuongtru' => 'diachi', 'gioidan' => 'part', 'tinh' => 'part', 'uutien' => 'prior', 'cccdso' => 'cccd',
+        'noituhocthuongtru' => 'diachi', 'gioidan' => 'part', 'tinh' => 'part', 'cccdso' => 'cccd',
     ];
 
     private array $parts = [];
@@ -146,8 +145,7 @@ class OfficialImporter
             throw new \RuntimeException('thiếu hoặc sai Ngày cấp (dd/mm/yyyy)');
         }
 
-        $data = ['part_id' => $partId, 'prior' => (int) $str('prior'),
-            'ngaycap_ngay' => $cap['d'], 'ngaycap_thang' => $cap['m'], 'ngaycap_nam' => $cap['y']];
+        $data = ['part_id' => $partId, 'ngaycap_ngay' => $cap['d'], 'ngaycap_thang' => $cap['m'], 'ngaycap_nam' => $cap['y']];
         foreach (['phapdanh', 'ngaysinh', 'noisinh', 'cccd', 'ngaycapcccd', 'thogioi', 'diachi', 'hephai'] as $k) {
             $data[$k] = $str($k);
         }
