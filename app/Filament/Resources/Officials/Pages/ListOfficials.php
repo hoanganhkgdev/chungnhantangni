@@ -10,7 +10,6 @@ use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Schemas\Components\Tabs\Tab;
@@ -46,13 +45,11 @@ class ListOfficials extends ListRecords
                     Select::make('part_id')->label('Tỉnh thành mặc định')
                         ->helperText('Dùng cho dòng có cột "Tỉnh thành" để trống hoặc không khớp tên.')
                         ->options(fn () => Part::orderBy('weight')->pluck('title', 'id'))->searchable(),
-                    Toggle::make('update')->label('Cập nhật nếu trùng Số thẻ')
-                        ->helperText('Tắt: dòng trùng vẫn được thêm mới. Bật: ghi các ô có dữ liệu vào thẻ cũ.'),
                 ])
                 ->action(function (array $data) {
                     $path = Storage::disk('local')->path($data['file']);
                     try {
-                        $r = (new OfficialImporter($data['part_id'] ?? null, (bool) ($data['update'] ?? false)))
+                        $r = (new OfficialImporter($data['part_id'] ?? null))
                             ->import($path, pathinfo($path, PATHINFO_EXTENSION));
                     } finally {
                         Storage::disk('local')->delete($data['file']);

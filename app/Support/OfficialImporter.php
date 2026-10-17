@@ -16,8 +16,6 @@ class OfficialImporter
 {
     /** Tiêu đề cột của file mẫu. */
     public const COLUMNS = [
-        'sothe' => 'Số thẻ',
-        'sochungnhan' => 'Số chứng nhận',
         'phapdanh' => 'Pháp danh',
         'ho' => 'Họ và đệm',
         'ten' => 'Tên',
@@ -35,13 +33,13 @@ class OfficialImporter
 
     /** Tên cột khác được chấp nhận (đã chuẩn hóa) => field. */
     private const ALIASES = [
-        'socn' => 'sochungnhan', 'hovadem' => 'ho', 'noituhoc' => 'diachi', 'thuongtru' => 'diachi',
+        'hovadem' => 'ho', 'noituhoc' => 'diachi', 'thuongtru' => 'diachi',
         'noituhocthuongtru' => 'diachi', 'gioidan' => 'part', 'tinh' => 'part', 'uutien' => 'prior', 'cccdso' => 'cccd',
     ];
 
     private array $parts = [];
 
-    public function __construct(private ?int $defaultPartId = null, private bool $update = false)
+    public function __construct(private ?int $defaultPartId = null)
     {
         foreach (Part::all() as $p) {
             $this->parts['id:'.$p->id] = $p->id;
@@ -143,20 +141,44 @@ class OfficialImporter
 
         $data = ['part_id' => $partId, 'prior' => (int) $str('prior'),
             'ngaycap_ngay' => $cap['d'], 'ngaycap_thang' => $cap['m'], 'ngaycap_nam' => $cap['y']];
-        foreach (['sothe', 'sochungnhan', 'phapdanh', 'ho', 'ten', 'ngaysinh', 'noisinh', 'cccd', 'ngaycapcccd', 'thogioi', 'diachi', 'hephai'] as $k) {
+        foreach (['phapdanh', 'ho', 'ten', 'ngaysinh', 'noisinh', 'cccd', 'ngaycapcccd', 'thogioi', 'diachi', 'hephai'] as $k) {
             $data[$k] = $str($k);
         }
 
-        $existing = ($this->update && $data['sothe'] !== '') ? Official::where('sothe', $data['sothe'])->first() : null;
+        // Số thẻ tự sinh: 7 số đầu CCCD + 5 số ngẫu nhiên.
+        $data['sothe'] = $this->generateSothe($data['cccd']);
 
-        if ($existing) {
-            // Không ghi đè bằng ô trống.
-            $existing->update(array_filter($data, fn ($v) => $v !== '' && $v !== null));
-            $result['updated']++;
-        } else {
-            Official::create($data + ['status' => 1]);
-            $result['created']++;
+        // Số chứng nhận = số của thẻ mới thêm gần nhất + 1.
+        $data['sochungnhan'] = $this->nextSochungnhan();
+
+        Official::create($data + ['status' => 1]);
+        $result['created']++;
+    }
+
+    /** Lấy số chứng nhận của thẻ thêm gần nhất rồi tăng phần số cuối lên 1 (giữ tiền tố, số 0 đầu). */
+    private function nextSochungnhan(): string
+    {
+        $last = Official::where('sochungnhan', '!=', '')->orderByDesc('id')->value('sochungnhan');
+        if ($last === null || ! preg_match('/^(.*?)(\d+)(\D*)$/', $last, $m)) {
+            return '1';
         }
+
+        return $m[1].str_pad((string) ((int) $m[2] + 1), strlen($m[2]), '0', STR_PAD_LEFT).$m[3];
+    }
+
+    private function generateSothe(string $cccd): string
+    {
+        $digits = preg_replace('/\D/', '', $cccd);
+        if (strlen($digits) < 7) {
+            return '';
+        }
+        $prefix = substr($digits, 0, 7);
+
+        do {
+            $sothe = $prefix.str_pad((string) random_int(0, 99999), 5, '0', STR_PAD_LEFT);
+        } while (Official::where('sothe', $sothe)->exists());
+
+        return $sothe;
     }
 
     private function resolvePart(string $value): ?int
