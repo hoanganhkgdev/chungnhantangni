@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Officials\Pages;
 use App\Filament\Resources\Officials\OfficialResource;
 use App\Models\Official;
 use App\Models\Part;
+use App\Support\OfficialImages;
 use App\Support\OfficialImporter;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -63,6 +64,26 @@ class ListOfficials extends ListRecords
 
                     Notification::make()->title('Import xong')->body(new HtmlString($body))
                         ->status($r['skipped'] || $r['errors'] ? 'warning' : 'success')->persistent()->send();
+                }),
+            Action::make('uploadImages')->label('Upload ảnh hàng loạt')->visible(fn () => auth()->user()->canEdit())->icon('heroicon-o-photo')->color('info')
+                ->modalHeading('Upload ảnh thẻ hàng loạt')
+                ->modalDescription('Chọn nhiều ảnh cùng lúc. Tên file phải trùng cột "Tên hình" đã điền khi import (không cần đúng đuôi, không phân biệt hoa thường). Ảnh trùng tên sẽ được ghi đè.')
+                ->modalSubmitActionLabel('Upload')
+                ->schema([
+                    FileUpload::make('files')->label('Ảnh')->required()->multiple()->maxFiles(300)
+                        ->disk('uploads')->directory('official')->visibility('public')
+                        ->image()->maxSize(5120)->preserveFilenames()->panelLayout('grid'),
+                ])
+                ->action(function (array $data) {
+                    $r = OfficialImages::attach(array_values((array) $data['files']));
+
+                    $body = "Đã gán ảnh cho {$r['matched']} thẻ.";
+                    if ($r['unmatched']) {
+                        $body .= '<br>Không khớp thẻ nào ('.count($r['unmatched']).'): '
+                            .e(implode(', ', array_slice($r['unmatched'], 0, 20))).(count($r['unmatched']) > 20 ? ' …' : '');
+                    }
+                    Notification::make()->title('Upload xong')->body(new HtmlString($body))
+                        ->status($r['unmatched'] ? 'warning' : 'success')->persistent()->send();
                 }),
             CreateAction::make(),
         ];

@@ -26,13 +26,14 @@ class OfficialImporter
         'diachi' => 'Nơi tu học',
         'part' => 'Tỉnh thành',
         'hephai' => 'Hệ phái',
+        'image' => 'Tên hình',
         'ngaycap' => 'Ngày cấp',
     ];
 
     /** Tên cột khác được chấp nhận (đã chuẩn hóa) => field. */
     private const ALIASES = [
         'hoten' => 'hovaten', 'noituhoc' => 'diachi', 'thuongtru' => 'diachi',
-        'noituhocthuongtru' => 'diachi', 'gioidan' => 'part', 'tinh' => 'part', 'cccdso' => 'cccd',
+        'noituhocthuongtru' => 'diachi', 'gioidan' => 'part', 'tinh' => 'part', 'cccdso' => 'cccd', 'tenanh' => 'image', 'hinh' => 'image', 'anh' => 'image',
     ];
 
     private array $parts = [];
@@ -149,6 +150,7 @@ class OfficialImporter
         foreach (['phapdanh', 'ngaysinh', 'noisinh', 'cccd', 'ngaycapcccd', 'thogioi', 'diachi', 'hephai'] as $k) {
             $data[$k] = $str($k);
         }
+        $data['image'] = basename($str('image'));
 
         $data['ho'] = $ho;
         $data['ten'] = $ten;
