@@ -67,17 +67,24 @@ class ListOfficials extends ListRecords
                 }),
             Action::make('uploadImages')->label('Upload ảnh hàng loạt')->visible(fn () => auth()->user()->canEdit())->icon('heroicon-o-photo')->color('info')
                 ->modalHeading('Upload ảnh thẻ hàng loạt')
-                ->modalDescription('Chọn nhiều ảnh cùng lúc. Tên file phải trùng cột "Tên hình" đã điền khi import (không cần đúng đuôi, không phân biệt hoa thường). Ảnh trùng tên sẽ được ghi đè.')
+                ->modalDescription('Chọn nhiều ảnh hoặc một file .zip chứa ảnh (zip nên tạo ảnh ở cùng một thư mục, mỗi ảnh dưới 5MB). Tên file ảnh phải trùng cột "Tên hình" đã điền khi import (không cần đúng đuôi, không phân biệt hoa thường). Ảnh trùng tên sẽ được ghi đè.')
                 ->modalSubmitActionLabel('Upload')
                 ->schema([
-                    FileUpload::make('files')->label('Ảnh')->required()->multiple()->maxFiles(300)
+                    FileUpload::make('files')->label('Ảnh hoặc file .zip')->required()->multiple()->maxFiles(300)
                         ->disk('uploads')->directory('official')->visibility('public')
-                        ->image()->maxSize(5120)->preserveFilenames()->panelLayout('grid'),
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/zip', 'application/x-zip-compressed'])
+                        ->maxSize(204800)->preserveFilenames(),
                 ])
                 ->action(function (array $data) {
-                    $r = OfficialImages::attach(array_values((array) $data['files']));
+                    try {
+                        $r = OfficialImages::process(array_values((array) $data['files']));
+                    } catch (\Throwable $e) {
+                        Notification::make()->title('Upload lỗi')->body($e->getMessage())->danger()->persistent()->send();
 
-                    $body = "Đã gán ảnh cho {$r['matched']} thẻ.";
+                        return;
+                    }
+
+                    $body = "Nhận {$r['extracted']} ảnh, đã gán cho {$r['matched']} thẻ.";
                     if ($r['unmatched']) {
                         $body .= '<br>Không khớp thẻ nào ('.count($r['unmatched']).'): '
                             .e(implode(', ', array_slice($r['unmatched'], 0, 20))).(count($r['unmatched']) > 20 ? ' …' : '');
