@@ -58,6 +58,11 @@ class Official extends Model
             return 'CHỨNG NHẬN TU NỮ';
         }
         if (preg_match('/(?<![\p{L}\p{N}])nam\s*tông(?![\p{L}\p{N}])/iu', $this->hephai)) {
+            // Pháp danh "Thích nữ ..." hoặc "Tu nữ ..." thuộc Nam tông thì là tu nữ.
+            if (preg_match('/^\s*(?:thích|tu)\s+nữ(?![\p{L}\p{N}])/iu', $this->phapdanh)) {
+                return 'CHỨNG NHẬN TU NỮ';
+            }
+
             return 'CHỨNG NHẬN TU SĨ';
         }
 
