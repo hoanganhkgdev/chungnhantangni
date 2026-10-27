@@ -54,7 +54,8 @@ class Official extends Model
     /** Tiêu đề in trên mặt trước thẻ: tu nữ / tu sĩ / tăng ni tùy thọ giới và hệ phái. */
     public function getCardTitleAttribute(): string
     {
-        if (preg_match('/(?<![\p{L}\p{N}])ni(?![\p{L}\p{N}])/iu', $this->thogioi)) {
+        if (preg_match('/(?<![\p{L}\p{N}])ni(?![\p{L}\p{N}])/iu', $this->thogioi)
+            || preg_match('/(?<![\p{L}\p{N}])nam\s*tông\s+ni(?![\p{L}\p{N}])/iu', $this->hephai)) {
             return 'CHỨNG NHẬN TU NỮ';
         }
         if (preg_match('/(?<![\p{L}\p{N}])nam\s*tông(?![\p{L}\p{N}])/iu', $this->hephai)) {
