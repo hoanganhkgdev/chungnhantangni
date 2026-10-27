@@ -42,8 +42,9 @@ class OfficialImporter
     {
         foreach (Part::all() as $p) {
             $this->parts['id:'.$p->id] = $p->id;
-            $this->parts['t:'.self::norm($p->title)] = $p->id;
-            $this->parts['t:'.self::norm($p->alias)] = $p->id;
+            foreach ([$p->title, $p->alias] as $name) {
+                $this->parts['t:'.self::partKey($name)] ??= $p->id;
+            }
         }
     }
 
@@ -200,7 +201,9 @@ class OfficialImporter
             return (int) $value;
         }
 
-        return $this->parts['t:'.self::norm($value)] ?? $this->defaultPartId;
+        $key = self::partKey($value);
+
+        return $this->parts['t:'.($key === 'saigon' ? 'hcm' : $key)] ?? $this->defaultPartId;
     }
 
     /** Ô ngày của Excel được đọc thành DateTime, quy về dd/mm/yyyy như dữ liệu cũ. */
@@ -231,6 +234,19 @@ class OfficialImporter
         }
 
         return null;
+    }
+
+    /** Khóa so khớp tỉnh thành: bỏ tiền tố "Tỉnh", "TP.", "Thành phố" để "Đồng Nai" khớp "Tỉnh Đồng Nai". */
+    private static function partKey(string $s): string
+    {
+        $k = self::norm($s);
+        $k = preg_replace('/^(thanhpho|tinh|tp)(?=.)/', '', $k);
+
+        return match ($k) {
+            'hochiminh' => 'hcm',
+            'thuathienhue' => 'hue',
+            default => $k,
+        };
     }
 
     /** Chuẩn hóa tiêu đề/tên: bỏ dấu, chữ thường, chỉ giữ chữ-số. */
