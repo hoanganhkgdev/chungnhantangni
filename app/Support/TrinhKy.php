@@ -50,8 +50,11 @@ class TrinhKy
             'cccd' => $o->cccd,
             'ngaycapcccd' => $o->ngaycapcccd,
             'thogioi' => $o->thogioi,
-            'gioidan' => $o->part?->title ?? '',
+            'gioidan' => $o->gioidan,
+            'noigioidan' => $o->part?->title ?? '',
             'diachi' => $o->diachi,
+            // Thẻ cũ chưa có nơi thường trú riêng thì dùng nơi tu học như trước.
+            'thuongtru' => $o->thuongtru !== '' ? $o->thuongtru : $o->diachi,
             'sothe' => $o->sothe,
         ];
 

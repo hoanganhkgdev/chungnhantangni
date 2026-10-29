@@ -23,7 +23,9 @@ class OfficialImporter
         'cccd' => 'Số CCCD',
         'ngaycapcccd' => 'Ngày cấp CCCD',
         'thogioi' => 'Thọ giới',
+        'gioidan' => 'Tên giới đàn',
         'diachi' => 'Nơi tu học',
+        'thuongtru' => 'Nơi thường trú',
         'part' => 'Tỉnh thành',
         'hephai' => 'Hệ phái',
         'image' => 'Tên hình',
@@ -32,8 +34,8 @@ class OfficialImporter
 
     /** Tên cột khác được chấp nhận (đã chuẩn hóa) => field. */
     private const ALIASES = [
-        'hoten' => 'hovaten', 'noituhoc' => 'diachi', 'thuongtru' => 'diachi',
-        'noituhocthuongtru' => 'diachi', 'gioidan' => 'part', 'tinh' => 'part', 'cccdso' => 'cccd', 'tenanh' => 'image', 'hinh' => 'image', 'anh' => 'image',
+        'hoten' => 'hovaten', 'noituhoc' => 'diachi', 'thuongtru' => 'thuongtru', 'diachithuongtru' => 'thuongtru',
+        'noituhocthuongtru' => 'diachi', 'gioidan' => 'gioidan', 'tinh' => 'part', 'cccdso' => 'cccd', 'tenanh' => 'image', 'hinh' => 'image', 'anh' => 'image',
     ];
 
     private array $parts = [];
@@ -148,7 +150,7 @@ class OfficialImporter
         }
 
         $data = ['part_id' => $partId, 'ngaycap_ngay' => $cap['d'], 'ngaycap_thang' => $cap['m'], 'ngaycap_nam' => $cap['y']];
-        foreach (['phapdanh', 'ngaysinh', 'noisinh', 'cccd', 'ngaycapcccd', 'thogioi', 'diachi', 'hephai'] as $k) {
+        foreach (['phapdanh', 'ngaysinh', 'noisinh', 'cccd', 'ngaycapcccd', 'thogioi', 'gioidan', 'diachi', 'thuongtru', 'hephai'] as $k) {
             $data[$k] = $str($k);
         }
         $data['image'] = basename($str('image'));

@@ -32,7 +32,8 @@ class OfficialForm
                                 ->relationship('part', 'title')->searchable()->preload()->required(),
                             TextInput::make('hephai')->label('Hệ phái')
                                 ->datalist(['Bắc Tông', 'Nam Tông', 'Khất Sĩ']),
-                            TextInput::make('thogioi')->label('Thọ giới')->columnSpanFull(),
+                            TextInput::make('thogioi')->label('Thọ giới'),
+                            TextInput::make('gioidan')->label('Tên giới đàn'),
                             Grid::make(3)->columnSpanFull()->schema([
                                 TextInput::make('ngaycap_ngay')->label('Ngày cấp')->numeric()->minValue(1)->maxValue(31)->required(),
                                 TextInput::make('ngaycap_thang')->label('Tháng')->numeric()->minValue(1)->maxValue(12)->required(),
@@ -48,7 +49,8 @@ class OfficialForm
                                 ->live(onBlur: true)
                                 ->helperText(fn ($state, ?Official $record) => self::dupWarning('cccd', $state, $record, 'CCCD')),
                             TextInput::make('ngaycapcccd')->label('Ngày cấp CCCD'),
-                            TextInput::make('diachi')->label('Nơi tu học / thường trú')->columnSpanFull(),
+                            TextInput::make('diachi')->label('Nơi tu học')->columnSpanFull(),
+                            TextInput::make('thuongtru')->label('Nơi thường trú')->columnSpanFull(),
                         ]),
                     ]),
                     Group::make()->columnSpan(['lg' => 1])->schema([
