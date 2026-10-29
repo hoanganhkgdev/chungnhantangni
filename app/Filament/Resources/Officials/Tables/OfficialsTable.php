@@ -66,6 +66,8 @@ class OfficialsTable
                     ->url(fn (Official $o) => $o->public_path)->openUrlInNewTab(),
                 Action::make('print')->label('Xuất ảnh')->icon('heroicon-o-photo')->color('gray')
                     ->url(fn (Official $o) => route('official.print', ['ids' => $o->id]))->openUrlInNewTab(),
+                Action::make('trinhky')->label('Trình ký')->icon('heroicon-o-document-text')->color('gray')
+                    ->url(fn (Official $o) => route('official.trinhky', ['ids' => $o->id])),
                 EditAction::make(),
             ])
             ->toolbarActions([
@@ -77,6 +79,10 @@ class OfficialsTable
                     BulkAction::make('print')->label('Xuất ảnh thẻ đã chọn')->icon('heroicon-o-photo')
                         ->action(fn (Collection $r, $livewire) => $livewire->js(
                             'window.open('.json_encode(route('official.print', ['ids' => $r->pluck('id')->implode(',')])).', "_blank")'
+                        ))->deselectRecordsAfterCompletion(),
+                    BulkAction::make('trinhky')->label('Xuất Word trình ký')->icon('heroicon-o-document-text')
+                        ->action(fn (Collection $r, $livewire) => $livewire->js(
+                            'window.location.href = '.json_encode(route('official.trinhky', ['ids' => $r->pluck('id')->implode(',')]))
                         ))->deselectRecordsAfterCompletion(),
                     DeleteBulkAction::make(),
                 ]),

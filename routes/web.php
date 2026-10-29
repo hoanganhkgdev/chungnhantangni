@@ -16,3 +16,6 @@ Route::get('/official/{part}/{slug}', [OfficialController::class, 'show'])->wher
 
 // In thẻ (A5 ngang) cho quản trị viên.
 Route::get('/in-the', PrintController::class)->name('official.print');
+
+// Xuất file Word trình ký cấp giấy chứng nhận.
+Route::get('/trinh-ky', [PrintController::class, 'trinhKy'])->name('official.trinhky');

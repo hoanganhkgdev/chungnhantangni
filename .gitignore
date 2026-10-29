@@ -29,3 +29,6 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 exports/
+
+# File Word mẫu để ở gốc dự án
+/*.docx

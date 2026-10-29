@@ -166,11 +166,12 @@ class OfficialImporter
         $result['created']++;
     }
 
-    /** Lấy số chứng nhận của thẻ thêm gần nhất rồi tăng phần số cuối lên 1 (giữ tiền tố, số 0 đầu). */
+    /** Lấy số chứng nhận của thẻ thêm gần nhất rồi tăng cụm số đầu lên 1 (giữ tiền tố, số 0 đầu). */
     private function nextSochungnhan(): string
     {
         $last = Official::where('sochungnhan', '!=', '')->orderByDesc('id')->value('sochungnhan');
-        if ($last === null || ! preg_match('/^(.*?)(\d+)(\D*)$/', $last, $m)) {
+        // Dạng 54830/2026.CNTN: tăng cụm số đầu, giữ nguyên phần /năm.CNTN.
+        if ($last === null || ! preg_match('/^(\D*)(\d+)(.*)$/s', $last, $m)) {
             return '1';
         }
 

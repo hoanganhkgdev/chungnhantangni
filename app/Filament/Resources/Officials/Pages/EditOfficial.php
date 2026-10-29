@@ -18,6 +18,8 @@ class EditOfficial extends EditRecord
                 ->url($this->record->public_path)->openUrlInNewTab(),
             Action::make('print')->label('Xuất ảnh thẻ')->icon('heroicon-o-photo')->color('gray')
                 ->url(route('official.print', ['ids' => $this->record->id]))->openUrlInNewTab(),
+            Action::make('trinhky')->label('Xuất Word trình ký')->icon('heroicon-o-document-text')->color('gray')
+                ->url(route('official.trinhky', ['ids' => $this->record->id])),
             DeleteAction::make(),
         ];
     }
